@@ -1,6 +1,7 @@
 import json
 import urllib.request
 import datetime
+import gzip  # 新增：引入解压缩模块
 from xml.sax.saxutils import escape
 
 # 你的源数据接口
@@ -12,28 +13,39 @@ def format_time(ts):
 
 def main():
     print("正在拉取 JSON 数据...")
-    req = urllib.request.Request(API_URL)
+    
+    # 新增：伪装成正常的电脑浏览器，并告诉服务器我们接受 gzip 压缩
+    headers = {
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept-Encoding': 'gzip, deflate'
+    }
+    req = urllib.request.Request(API_URL, headers=headers)
+    
     with urllib.request.urlopen(req) as response:
-        data = json.loads(response.read().decode('utf-8'))
+        # 新增：判断服务器返回的数据是否被 gzip 压缩过
+        if response.info().get('Content-Encoding') == 'gzip':
+            print("检测到 GZIP 压缩，正在解压数据...")
+            f = gzip.GzipFile(fileobj=response)
+            data = json.loads(f.read().decode('utf-8'))
+        else:
+            data = json.loads(response.read().decode('utf-8'))
 
     channels = data.get('result', [])
     
     xml_out = ['<?xml version="1.0" encoding="UTF-8"?>']
     xml_out.append('<!DOCTYPE tv SYSTEM "xmltv.dtd">')
-    # 按照你给的格式，这里加上 generator-info-name
     xml_out.append('<tv generator-info-name="CF-Worker-EPG-Merged">')
 
     print(f"成功获取 {len(channels)} 个频道，正在生成 XML...")
 
     # 1. 生成所有的 <channel> 标签
     for ch in channels:
-        # 为了方便对应，这里我们直接用频道的名字（如：日テレ）作为 ID
         ch_name = escape(ch.get('name', '未知频道'))
         
         xml_out.append(f'  <channel id="{ch_name}">')
         xml_out.append(f'    <display-name>{ch_name}</display-name>')
-        xml_out.append(f'    <icon src=""/>') # 补充空图标标签，防止解析报错
-        xml_out.append(f'    <url></url>')    # 补充空URL标签
+        xml_out.append(f'    <icon src=""/>')
+        xml_out.append(f'    <url></url>')
         xml_out.append('  </channel>')
 
     # 2. 生成所有的 <programme> 标签
@@ -44,7 +56,6 @@ def main():
         if not epg_raw:
             continue
         
-        # record_epg 在 JSON 中是字符串，需要二次解析
         try:
             epg_list = json.loads(epg_raw)
         except json.JSONDecodeError:
@@ -58,11 +69,9 @@ def main():
             if start_ts == 0:
                 continue
                 
-            # 计算结束时间：当前节目结束时间 = 下一个节目的开始时间
             if i < len(epg_list) - 1:
                 stop_ts = epg_list[i+1]['time']
             else:
-                # 最后一个节目，默认给 1 个小时的时长
                 stop_ts = start_ts + 3600
                 
             start_str = format_time(start_ts)
@@ -70,15 +79,12 @@ def main():
             
             xml_out.append(f'  <programme start="{start_str}" stop="{stop_str}" channel="{ch_name}">')
             xml_out.append(f'    <title lang="ja">{title}</title>')
-            # 兼容性处理：把 title 复制一份给 desc，防止播放器因为缺少 desc 报错
             xml_out.append(f'    <desc lang="ja">{title}</desc>')
-            # 兼容性处理：补上 category 标签
             xml_out.append(f'    <category lang="ja">一般</category>')
             xml_out.append('  </programme>')
 
     xml_out.append('</tv>')
 
-    # 写入文件
     with open('epg.xml', 'w', encoding='utf-8') as f:
         f.write('\n'.join(xml_out))
         
