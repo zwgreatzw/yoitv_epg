@@ -1,7 +1,7 @@
 import json
 import urllib.request
 import datetime
-import gzip  # 新增：引入解压缩模块
+import gzip  # 引入解压缩模块
 from xml.sax.saxutils import escape
 
 # 你的源数据接口
@@ -14,7 +14,7 @@ def format_time(ts):
 def main():
     print("正在拉取 JSON 数据...")
     
-    # 新增：伪装成正常的电脑浏览器，并告诉服务器我们接受 gzip 压缩
+    # 伪装成正常的电脑浏览器，并告诉服务器我们接受 gzip 压缩
     headers = {
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept-Encoding': 'gzip, deflate'
@@ -22,7 +22,7 @@ def main():
     req = urllib.request.Request(API_URL, headers=headers)
     
     with urllib.request.urlopen(req) as response:
-        # 新增：判断服务器返回的数据是否被 gzip 压缩过
+        # 判断服务器返回的数据是否被 gzip 压缩过
         if response.info().get('Content-Encoding') == 'gzip':
             print("检测到 GZIP 压缩，正在解压数据...")
             f = gzip.GzipFile(fileobj=response)
@@ -40,9 +40,12 @@ def main():
 
     # 1. 生成所有的 <channel> 标签
     for ch in channels:
+        # 【修改点1】：提取 JSON 自带的英文数字 ID，例如 "AA6EC2B2BC19EFE5FA44BE23187CDA63"
+        ch_id = ch.get('id', 'unknown_id')
         ch_name = escape(ch.get('name', '未知频道'))
         
-        xml_out.append(f'  <channel id="{ch_name}">')
+        # 将 id 属性改为使用 ch_id
+        xml_out.append(f'  <channel id="{ch_id}">')
         xml_out.append(f'    <display-name>{ch_name}</display-name>')
         xml_out.append(f'    <icon src=""/>')
         xml_out.append(f'    <url></url>')
@@ -50,7 +53,8 @@ def main():
 
     # 2. 生成所有的 <programme> 标签
     for ch in channels:
-        ch_name = escape(ch.get('name', '未知频道'))
+        # 【修改点2】：同样使用 JSON 自带的 ID 来关联节目
+        ch_id = ch.get('id', 'unknown_id')
         epg_raw = ch.get('record_epg', '[]')
         
         if not epg_raw:
@@ -77,7 +81,8 @@ def main():
             start_str = format_time(start_ts)
             stop_str = format_time(stop_ts)
             
-            xml_out.append(f'  <programme start="{start_str}" stop="{stop_str}" channel="{ch_name}">')
+            # 将 channel 属性改为使用 ch_id
+            xml_out.append(f'  <programme start="{start_str}" stop="{stop_str}" channel="{ch_id}">')
             xml_out.append(f'    <title lang="ja">{title}</title>')
             xml_out.append(f'    <desc lang="ja">{title}</desc>')
             xml_out.append(f'    <category lang="ja">一般</category>')
