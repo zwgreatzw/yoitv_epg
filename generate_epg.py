@@ -5,7 +5,7 @@ import gzip  # 新增：引入解压缩模块
 from xml.sax.saxutils import escape
 
 # 你的源数据接口
-API_URL = "http://live.yoitv.com:9083/api?action=listLives&cid=3140463FA6B2AC641D4D63F9534B6D94&uid=C2D9261F3D5753E74E97EB28FE2D8B26&details=0&page_size=200&sort=no%20asc&sort=created_time%20desc&type=video&no_epg=0&referer=http%3A%2F%2Fplay.yoitv.com"
+API_URL = "http://live.yoitv.com:9083/api?action=listLives&cid=A1B9470C288260372598FC7C577E4C61&uid=C2D9261F3D5753E74E97EB28FE2D8B26&details=0&page_size=200&sort=no%20asc&sort=created_time%20desc&type=video&no_epg=0&epg_days=30&referer=http%3A%2F%2Fplay.yoitv.com"
 
 def format_time(ts):
     # 将时间戳转换为 XMLTV 标准的 UTC 格式
