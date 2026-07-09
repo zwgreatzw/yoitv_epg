@@ -2,22 +2,21 @@ name: Update EPG Daily
 
 on:
   schedule:
-    # 每天 UTC 时间 16:00 执行（对应北京时间凌晨 0:00，日本时间凌晨 1:00）
     - cron: '0 16 * * *'
-  workflow_dispatch: # 允许你随时在网页上手动点击运行测试
+  workflow_dispatch:
 
 permissions:
-  contents: write # 赋予 GitHub Action 写入文件的权限
+  contents: write
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4  # 这里升级为 v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5 # 这里升级为 v5
         with:
           python-version: '3.10'
 
@@ -29,5 +28,4 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add epg.xml
-          # 如果文件有变化就 commit 并 push，如果没有变化就跳过
           git diff --quiet && git diff --staged --quiet || (git commit -m "Auto update epg.xml" && git push)
